@@ -1,0 +1,1654 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Accounts Payable AI Agent</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+
+    <!-- ==========================================
+         SECTION 1: APPLICATION HEADER
+         Purpose: Display the application title
+         ========================================== -->
+
+    <header class="app-header">
+        <div class="header-content">
+            <div class="brand-icon">AP</div>
+            <div>
+                <h1>Accounts Payable AI Agent</h1>
+                <p>
+                    AI-powered invoice and purchase order auditing
+                    for faster, more accurate financial review.
+                </p>
+            </div>
+        </div>
+
+        <div class="header-label">LangGraph + OpenAI</div>
+    </header>
+
+
+    <!-- ==========================================
+         SECTION 2: MAIN APPLICATION LAYOUT
+         Purpose: Organize the enterprise dashboard
+         ========================================== -->
+
+    <div class="app-layout">
+
+        <aside class="sidebar">
+
+            <div class="sidebar-title">ACCOUNTS PAYABLE</div>
+
+            <div class="sidebar-item active">
+                <span>▣</span>
+                Audit Invoices
+            </div>
+
+            <!-- Audit History -->
+
+            <div class="history-header">
+                <strong>Audit History</strong>
+                <button
+                    type="button"
+                    id="refreshHistory"
+                    class="history-refresh"
+                    title="Refresh history"
+                    aria-label="Refresh audit history"
+                >↻</button>
+            </div>
+
+            <div
+                id="historyList"
+                class="history-list"
+                aria-live="polite"
+            >
+                <p class="history-empty">Loading history...</p>
+            </div>
+
+            <div class="sidebar-info">
+                Upload documents, review discrepancies,
+                and identify invoices requiring attention.
+            </div>
+
+            <div class="sidebar-footer">
+                AI-Powered Financial Auditing
+            </div>
+
+        </aside>
+
+
+        <main class="main-content">
+
+            <!-- ==========================================
+                 SECTION 3: DOCUMENT UPLOAD FORM
+                 Purpose: Upload multiple invoices and POs
+                 ========================================== -->
+
+            <section class="upload-section">
+
+                <div class="section-heading">
+                    <h2>Document Upload</h2>
+                    <p>
+                        Upload up to 10 invoices and their
+                        corresponding purchase orders.
+                    </p>
+                </div>
+
+                <form id="auditForm">
+
+                    <div class="upload-grid">
+
+                        <!-- Invoice Upload -->
+
+                        <div class="upload-panel">
+
+                            <div class="upload-panel-header">
+                                <h3>Invoice PDFs</h3>
+                                <span class="file-limit">Maximum 10</span>
+                            </div>
+
+                            <label
+                                class="drop-zone"
+                                id="invoiceDropZone"
+                                for="invoices"
+                            >
+                                <span class="upload-icon">↑</span>
+                                <strong>Drag & drop invoice PDFs here</strong>
+                                <span>or click to browse files</span>
+                                <small>PDF only • Maximum 10 MB each</small>
+                            </label>
+
+                            <input
+                                type="file"
+                                id="invoices"
+                                name="invoices"
+                                accept=".pdf,application/pdf"
+                                multiple
+                                required
+                                class="file-input"
+                            >
+
+                            <div class="selected-files-header">
+                                <strong>Selected Invoices</strong>
+                                <span id="invoiceCount">0 files</span>
+                            </div>
+
+                            <div
+                                id="invoiceFileList"
+                                class="file-list"
+                            ></div>
+
+                        </div>
+
+
+                        <!-- Purchase Order Upload -->
+
+                        <div class="upload-panel">
+
+                            <div class="upload-panel-header">
+                                <h3>Purchase Order PDFs</h3>
+                                <span class="file-limit">
+                                    Optional • Maximum 10
+                                </span>
+                            </div>
+
+                            <label
+                                class="drop-zone"
+                                id="poDropZone"
+                                for="purchaseOrders"
+                            >
+                                <span class="upload-icon">↑</span>
+                                <strong>
+                                    Drag & drop purchase order PDFs here
+                                </strong>
+                                <span>or click to browse files</span>
+                                <small>PDF only • Maximum 10 MB each</small>
+                            </label>
+
+                            <input
+                                type="file"
+                                id="purchaseOrders"
+                                name="purchase_orders"
+                                accept=".pdf,application/pdf"
+                                multiple
+                                class="file-input"
+                            >
+
+                            <div class="selected-files-header">
+                                <strong>Selected Purchase Orders</strong>
+                                <span id="poCount">0 files</span>
+                            </div>
+
+                            <div
+                                id="poFileList"
+                                class="file-list"
+                            ></div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- ==========================================
+                         SECTION 4: USER QUESTION
+                         Purpose: Collect the audit instruction
+                         ========================================== -->
+
+                    <div class="question-section">
+
+                        <label for="userQuery">Your Question</label>
+
+                        <textarea
+                            id="userQuery"
+                            name="user_query"
+                            required
+                        >Audit these invoices against their purchase orders and flag discrepancies, including price, quantity, and total amount differences.</textarea>
+
+                    </div>
+
+
+                    <!-- ==========================================
+                         SECTION 5: ACTION BUTTONS
+                         Purpose: Run the agent or clear the form
+                         ========================================== -->
+
+                    <div class="form-actions">
+
+                        <div class="button-group">
+
+                            <button
+                                type="submit"
+                                id="submitButton"
+                                class="btn btn-primary"
+                            >
+                                ▶ Run AI Agent
+                            </button>
+
+                            <button
+                                type="button"
+                                id="clearButton"
+                                class="btn btn-secondary"
+                            >
+                                ↻ Clear All
+                            </button>
+
+                        </div>
+
+                        <p class="help-text">
+                            Upload either no purchase orders or one
+                            purchase order per invoice.
+                            Files are paired in upload order.
+                        </p>
+
+                    </div>
+
+                </form>
+
+                <p
+                    id="status"
+                    role="status"
+                    aria-live="polite"
+                ></p>
+
+            </section>
+
+
+            <!-- ==========================================
+                 SECTION 6: AUDIT RESULTS DASHBOARD
+                 Purpose: Display batch summary and audit findings
+                 ========================================== -->
+
+            <section id="result" class="results-section" hidden>
+
+                <div class="section-heading">
+                    <h2>Audit Results</h2>
+                    <p>
+                        Financial audit summary and detailed
+                        findings for the uploaded invoices.
+                    </p>
+                </div>
+
+                <!-- Summary Dashboard -->
+
+                <div class="summary-grid">
+
+                    <div class="summary-card total-card">
+                        <div class="summary-label">Invoices Audited</div>
+                        <div
+                            class="summary-value"
+                            id="totalInvoices"
+                        >0</div>
+                    </div>
+
+                    <div class="summary-card matched-card">
+                        <div class="summary-label">Matched</div>
+                        <div
+                            class="summary-value"
+                            id="matchedInvoices"
+                        >0</div>
+                    </div>
+
+                    <div class="summary-card review-card">
+                        <div class="summary-label">Needs Review</div>
+                        <div
+                            class="summary-value"
+                            id="reviewInvoices"
+                        >0</div>
+                    </div>
+
+                    <div class="summary-card failed-card">
+                        <div class="summary-label">Failed</div>
+                        <div
+                            class="summary-value"
+                            id="failedInvoices"
+                        >0</div>
+                    </div>
+
+                </div>
+
+                <p id="summary" class="batch-summary"></p>
+
+                <!-- Individual Audit Results -->
+
+                <div class="results-header">
+
+                    <h3>Invoice Audit Details</h3>
+
+                    <button
+                        type="button"
+                        id="expandButton"
+                        class="btn btn-outline"
+                    >
+                        Expand All
+                    </button>
+
+                </div>
+
+                <div id="resultsContainer"></div>
+
+            </section>
+
+        </main>
+
+    </div>
+
+
+    <script>
+
+        // ==========================================
+        // SECTION 1: GET HTML ELEMENTS
+        // Purpose: Access all application controls
+        // ==========================================
+
+        const auditForm =
+            document.getElementById("auditForm");
+
+        const invoicesInput =
+            document.getElementById("invoices");
+
+        const purchaseOrdersInput =
+            document.getElementById("purchaseOrders");
+
+        const invoiceDropZone =
+            document.getElementById("invoiceDropZone");
+
+        const poDropZone =
+            document.getElementById("poDropZone");
+
+        const invoiceFileList =
+            document.getElementById("invoiceFileList");
+
+        const poFileList =
+            document.getElementById("poFileList");
+
+        const invoiceCount =
+            document.getElementById("invoiceCount");
+
+        const poCount =
+            document.getElementById("poCount");
+
+        const submitButton =
+            document.getElementById("submitButton");
+
+        const clearButton =
+            document.getElementById("clearButton");
+
+        const expandButton =
+            document.getElementById("expandButton");
+
+        const status =
+            document.getElementById("status");
+
+        const result =
+            document.getElementById("result");
+
+        const summary =
+            document.getElementById("summary");
+
+        const resultsContainer =
+            document.getElementById("resultsContainer");
+
+        const userQuery =
+            document.getElementById("userQuery");
+
+        const historyList =
+            document.getElementById("historyList");
+
+        const refreshHistory =
+            document.getElementById("refreshHistory");
+
+        const defaultQuestion = userQuery.value;
+
+        let isProcessing = false;
+
+
+        // ==========================================
+        // SECTION 2: FILE SIZE FORMATTING
+        // Purpose: Display readable file sizes
+        // ==========================================
+
+        function formatFileSize(bytes) {
+
+            if (bytes < 1024) {
+                return bytes + " B";
+            }
+
+            if (bytes < 1024 * 1024) {
+                return (bytes / 1024).toFixed(1) + " KB";
+            }
+
+            return (
+                bytes / (1024 * 1024)
+            ).toFixed(2) + " MB";
+
+        }
+
+
+        // ==========================================
+        // SECTION 3: DISPLAY SELECTED FILES
+        // Purpose: Show filenames and remove controls
+        // ==========================================
+
+        function displayFiles(input, container, countElement) {
+
+            const files = Array.from(input.files);
+
+            container.replaceChildren();
+
+            countElement.textContent =
+                files.length + " file(s) selected";
+
+            if (files.length === 0) {
+
+                const emptyMessage =
+                    document.createElement("p");
+
+                emptyMessage.className = "empty-files";
+
+                emptyMessage.textContent =
+                    "No files selected";
+
+                container.appendChild(emptyMessage);
+
+                return;
+            }
+
+            files.forEach((file, index) => {
+
+                const fileRow =
+                    document.createElement("div");
+
+                fileRow.className = "file-row";
+
+                const fileIcon =
+                    document.createElement("span");
+
+                fileIcon.className = "pdf-icon";
+                fileIcon.textContent = "PDF";
+
+                const fileName =
+                    document.createElement("span");
+
+                fileName.className = "file-name";
+                fileName.textContent = file.name;
+
+                const fileSize =
+                    document.createElement("span");
+
+                fileSize.className = "file-size";
+
+                fileSize.textContent =
+                    formatFileSize(file.size);
+
+                const removeButton =
+                    document.createElement("button");
+
+                removeButton.type = "button";
+                removeButton.className = "remove-file";
+                removeButton.textContent = "×";
+                removeButton.title = "Remove file";
+
+                removeButton.setAttribute(
+                    "aria-label",
+                    "Remove " + file.name
+                );
+
+                removeButton.disabled = isProcessing;
+
+                removeButton.addEventListener("click", () => {
+
+                    const updatedFiles = files.filter(
+                        (_, fileIndex) => fileIndex !== index
+                    );
+
+                    updateInputFiles(input, updatedFiles);
+
+                });
+
+                fileRow.appendChild(fileIcon);
+                fileRow.appendChild(fileName);
+                fileRow.appendChild(fileSize);
+                fileRow.appendChild(removeButton);
+
+                container.appendChild(fileRow);
+
+            });
+
+        }
+
+
+        // ==========================================
+        // SECTION 4: UPDATE FILE INPUT
+        // Purpose: Support removing individual PDFs
+        // ==========================================
+
+        function updateInputFiles(input, files) {
+
+            const transfer = new DataTransfer();
+
+            files.forEach(file => {
+                transfer.items.add(file);
+            });
+
+            input.files = transfer.files;
+
+            input.dispatchEvent(
+                new Event("change", { bubbles: true })
+            );
+
+        }
+
+
+        // ==========================================
+        // SECTION 5: DRAG AND DROP UPLOAD
+        // Purpose: Support dragging PDF files into the UI
+        // ==========================================
+
+        function setupDropZone(dropZone, input) {
+
+            dropZone.addEventListener("dragover", event => {
+
+                event.preventDefault();
+
+                if (!isProcessing) {
+                    dropZone.classList.add("drag-over");
+                }
+
+            });
+
+            dropZone.addEventListener("dragleave", () => {
+                dropZone.classList.remove("drag-over");
+            });
+
+            dropZone.addEventListener("drop", event => {
+
+                event.preventDefault();
+
+                dropZone.classList.remove("drag-over");
+
+                if (isProcessing) {
+                    return;
+                }
+
+                const droppedFiles = Array.from(
+                    event.dataTransfer.files
+                );
+
+                const existingFiles = Array.from(input.files);
+
+                updateInputFiles(
+                    input,
+                    [...existingFiles, ...droppedFiles]
+                );
+
+            });
+
+        }
+
+        setupDropZone(invoiceDropZone, invoicesInput);
+        setupDropZone(poDropZone, purchaseOrdersInput);
+
+        invoicesInput.addEventListener("change", () => {
+
+            displayFiles(
+                invoicesInput,
+                invoiceFileList,
+                invoiceCount
+            );
+
+        });
+
+        purchaseOrdersInput.addEventListener("change", () => {
+
+            displayFiles(
+                purchaseOrdersInput,
+                poFileList,
+                poCount
+            );
+
+        });
+
+
+        // ==========================================
+        // SECTION 6: VALIDATE FILE SELECTION
+        // Purpose: Validate PDF count, size, and pairing
+        // ==========================================
+
+        function validateFiles() {
+
+            const invoices = Array.from(invoicesInput.files);
+
+            const purchaseOrders = Array.from(
+                purchaseOrdersInput.files
+            );
+
+            if (invoices.length === 0) {
+
+                throw new Error(
+                    "Please select at least one invoice PDF."
+                );
+
+            }
+
+            if (invoices.length > 10) {
+
+                throw new Error(
+                    "Maximum 10 invoices are allowed."
+                );
+
+            }
+
+            if (
+                purchaseOrders.length > 0 &&
+                purchaseOrders.length !== invoices.length
+            ) {
+
+                throw new Error(
+                    "Upload either zero purchase orders or " +
+                    "one purchase order per invoice."
+                );
+
+            }
+
+            const allFiles = [
+                ...invoices,
+                ...purchaseOrders
+            ];
+
+            const maxSize = 10 * 1024 * 1024;
+
+            for (const file of allFiles) {
+
+                if (!file.name.toLowerCase().endsWith(".pdf")) {
+
+                    throw new Error(
+                        "Only PDF files are supported."
+                    );
+
+                }
+
+                if (file.size > maxSize) {
+
+                    throw new Error(
+                        file.name + " exceeds the 10 MB limit."
+                    );
+
+                }
+
+            }
+
+        }
+
+
+        // ==========================================
+        // SECTION 7: FORMAT AUDIT STATUS
+        // Purpose: Convert technical status to readable text
+        // ==========================================
+
+        function formatStatus(statusValue) {
+
+            const statusNames = {
+                "MATCHED": "Matched",
+                "FLAGGED_FOR_REVIEW": "Needs Review",
+                "INFORMATION_ONLY": "Information Only",
+                "IDENTITY_MATCH_ONLY": "Identity Match Only",
+                "FAILED": "Processing Failed"
+            };
+
+            return statusNames[statusValue] || "Unknown Status";
+
+        }
+
+
+        // ==========================================
+        // SECTION 8: CREATE NATURAL LANGUAGE SUMMARY
+        // Purpose: Explain audit results in plain English
+        // ==========================================
+
+        function createAuditSummary(report) {
+
+            const invoiceNumber =
+                report.invoice_number || "the invoice";
+
+            const poNumber =
+                report.po_number || "the purchase order";
+
+            const issues = Array.isArray(report.issues)
+                ? report.issues
+                : [];
+
+            if (report.status === "MATCHED") {
+
+                return (
+                    "Invoice " + invoiceNumber +
+                    " was compared against purchase order " +
+                    poNumber +
+                    ". No discrepancies were detected in the " +
+                    "checked fields."
+                );
+
+            }
+
+            if (report.status === "FLAGGED_FOR_REVIEW") {
+
+                const difference = Number(report.difference);
+
+                let description =
+                    "The audit identified " +
+                    issues.length +
+                    " issue(s) that require attention.";
+
+                if (
+                    report.difference !== null &&
+                    report.difference !== undefined &&
+                    report.difference !== "" &&
+                    Number.isFinite(difference)
+                ) {
+
+                    const amount = Math.abs(difference).toFixed(2);
+
+                    if (difference > 0) {
+
+                        description +=
+                            " The invoice total is $" +
+                            amount +
+                            " higher than the purchase order total.";
+
+                    } else if (difference < 0) {
+
+                        description +=
+                            " The invoice total is $" +
+                            amount +
+                            " lower than the purchase order total.";
+
+                    } else {
+
+                        description +=
+                            " The document total difference is $0.00, " +
+                            "but other discrepancies were detected.";
+
+                    }
+
+                }
+
+                return description;
+
+            }
+
+            if (report.status === "INFORMATION_ONLY") {
+
+                return (
+                    "Document information was extracted successfully. " +
+                    "No purchase order matching or financial audit " +
+                    "was performed."
+                );
+
+            }
+
+            if (report.status === "IDENTITY_MATCH_ONLY") {
+
+                return (
+                    "The document identity and item matching checks " +
+                    "passed. Financial amounts were not audited."
+                );
+
+            }
+
+            if (report.status === "FAILED") {
+
+                return (
+                    "The document could not be processed successfully."
+                );
+
+            }
+
+            return (
+                "The document processing result is available below."
+            );
+
+        }
+
+
+        // ==========================================
+        // SECTION 9: CREATE RECOMMENDED ACTION
+        // Purpose: Explain the next business action
+        // ==========================================
+
+        function createRecommendation(report) {
+
+            if (report.recommendation) {
+                return report.recommendation;
+            }
+
+            if (report.status === "MATCHED") {
+
+                return (
+                    "The invoice can proceed through the " +
+                    "normal approval process."
+                );
+
+            }
+
+            if (report.status === "FLAGGED_FOR_REVIEW") {
+
+                return (
+                    "Review the identified discrepancies " +
+                    "before approving payment."
+                );
+
+            }
+
+            if (report.status === "FAILED") {
+
+                return (
+                    "Review the server logs and retry processing."
+                );
+
+            }
+
+            return (
+                "Review the document information before proceeding."
+            );
+
+        }
+
+
+        // ==========================================
+        // SECTION 10: CREATE REUSABLE HTML ELEMENTS
+        // Purpose: Build safe text-based UI components
+        // ==========================================
+
+        function createElement(tag, className, textValue) {
+
+            const element = document.createElement(tag);
+
+            if (className) {
+                element.className = className;
+            }
+
+            if (
+                textValue !== undefined &&
+                textValue !== null
+            ) {
+                element.textContent = String(textValue);
+            }
+
+            return element;
+
+        }
+
+        function createDetailRow(labelText, valueText) {
+
+            const row = createElement(
+                "div",
+                "detail-row"
+            );
+
+            const label = createElement(
+                "strong",
+                "detail-label",
+                labelText
+            );
+
+            const value = createElement(
+                "div",
+                "detail-value",
+                valueText
+            );
+
+            row.appendChild(label);
+            row.appendChild(value);
+
+            return row;
+
+        }
+
+
+        // ==========================================
+        // SECTION 11: DISPLAY INDIVIDUAL AUDIT RESULTS
+        // Purpose: Show clean natural-language audit cards
+        // ==========================================
+
+        function displayResults(data) {
+
+            resultsContainer.replaceChildren();
+
+            const auditItems = Array.isArray(data.results)
+                ? data.results
+                : [];
+
+            const matched = auditItems.filter(
+                item => item.report?.status === "MATCHED"
+            ).length;
+
+            const review = auditItems.filter(
+                item => item.report?.status === "FLAGGED_FOR_REVIEW"
+            ).length;
+
+            document.getElementById(
+                "totalInvoices"
+            ).textContent = data.total ?? auditItems.length;
+
+            document.getElementById(
+                "matchedInvoices"
+            ).textContent = matched;
+
+            document.getElementById(
+                "reviewInvoices"
+            ).textContent = review;
+
+            document.getElementById(
+                "failedInvoices"
+            ).textContent = data.failed ?? 0;
+
+            summary.textContent =
+                (data.completed ?? 0) + " completed, " +
+                (data.failed ?? 0) + " failed. " +
+                "Other statuses are shown in the individual results.";
+
+            auditItems.forEach((item, index) => {
+
+                const report = item.report || {};
+
+                const auditStatus =
+                    report.status || "FAILED";
+
+                const card = createElement(
+                    "article",
+                    "audit-card"
+                );
+
+                if (auditStatus === "MATCHED") {
+
+                    card.classList.add("card-matched");
+
+                } else if (
+                    auditStatus === "FLAGGED_FOR_REVIEW"
+                ) {
+
+                    card.classList.add("card-review");
+
+                } else {
+
+                    card.classList.add("card-neutral");
+
+                }
+
+
+                // ------------------------------------------
+                // STEP 1: Invoice heading
+                // ------------------------------------------
+
+                const cardHeader = createElement(
+                    "div",
+                    "audit-card-header"
+                );
+
+                const headingGroup = createElement(
+                    "div",
+                    "audit-heading-group"
+                );
+
+                const invoiceTitle = createElement(
+                    "h4",
+                    "",
+                    "Invoice: " +
+                    (
+                        report.invoice_number ||
+                        item.filename ||
+                        "Unknown"
+                    )
+                );
+
+                const poTitle = createElement(
+                    "p",
+                    "",
+                    "Purchase Order: " +
+                    (
+                        report.po_number ||
+                        item.purchase_order_filename ||
+                        "Not provided"
+                    )
+                );
+
+                headingGroup.appendChild(invoiceTitle);
+                headingGroup.appendChild(poTitle);
+
+                const statusBadge = createElement(
+                    "span",
+                    "status-badge",
+                    formatStatus(auditStatus)
+                );
+
+                if (auditStatus === "MATCHED") {
+
+                    statusBadge.classList.add("badge-matched");
+
+                } else if (
+                    auditStatus === "FLAGGED_FOR_REVIEW"
+                ) {
+
+                    statusBadge.classList.add("badge-review");
+
+                } else {
+
+                    statusBadge.classList.add("badge-neutral");
+
+                }
+
+                cardHeader.appendChild(headingGroup);
+                cardHeader.appendChild(statusBadge);
+
+                card.appendChild(cardHeader);
+
+
+                // ------------------------------------------
+                // STEP 2: Discrepancy amount
+                // ------------------------------------------
+
+                const amountRow = createElement(
+                    "div",
+                    "amount-row"
+                );
+
+                const amountLabel = createElement(
+                    "span",
+                    "",
+                    "Document Total Difference"
+                );
+
+                let amountText = "Not available";
+
+                const difference = Number(report.difference);
+
+                if (
+                    report.difference !== null &&
+                    report.difference !== undefined &&
+                    report.difference !== "" &&
+                    Number.isFinite(difference)
+                ) {
+
+                    const sign = difference > 0 ? "+" :
+                                 difference < 0 ? "-" : "";
+
+                    amountText =
+                        sign + "$" +
+                        Math.abs(difference).toFixed(2);
+
+                }
+
+                const amountValue = createElement(
+                    "strong",
+                    "amount-value",
+                    amountText
+                );
+
+                amountRow.appendChild(amountLabel);
+                amountRow.appendChild(amountValue);
+
+                card.appendChild(amountRow);
+
+
+                // ------------------------------------------
+                // STEP 3: Natural-language audit summary
+                // ------------------------------------------
+
+                const content = createElement(
+                    "div",
+                    "audit-card-content"
+                );
+
+                content.appendChild(
+                    createDetailRow(
+                        "Audit Summary",
+                        createAuditSummary(report)
+                    )
+                );
+
+
+                // ------------------------------------------
+                // STEP 4: Issues identified
+                // ------------------------------------------
+
+                const issues = Array.isArray(report.issues)
+                    ? report.issues
+                    : [];
+
+                if (issues.length > 0) {
+
+                    const issueContainer = createElement(
+                        "div",
+                        "issues-list"
+                    );
+
+                    issues.forEach(issue => {
+
+                        issueContainer.appendChild(
+                            createElement(
+                                "p",
+                                "issue-item",
+                                "• " + issue
+                            )
+                        );
+
+                    });
+
+                    const issueRow = createElement(
+                        "div",
+                        "detail-row"
+                    );
+
+                    issueRow.appendChild(
+                        createElement(
+                            "strong",
+                            "detail-label",
+                            "Issues Identified"
+                        )
+                    );
+
+                    issueRow.appendChild(issueContainer);
+
+                    content.appendChild(issueRow);
+
+                }
+
+
+                // ------------------------------------------
+                // STEP 5: Recommended action
+                // ------------------------------------------
+
+                content.appendChild(
+                    createDetailRow(
+                        "Recommended Action",
+                        createRecommendation(report)
+                    )
+                );
+
+                card.appendChild(content);
+
+
+                // ------------------------------------------
+                // STEP 6: Expandable technical details
+                // ------------------------------------------
+
+                const technicalDetails = createElement(
+                    "details",
+                    "technical-details"
+                );
+
+                const detailsHeading = createElement(
+                    "summary",
+                    "",
+                    "Technical Details (JSON & Executed Nodes)"
+                );
+
+                technicalDetails.appendChild(detailsHeading);
+
+                technicalDetails.appendChild(
+                    createElement(
+                        "h5",
+                        "",
+                        "Raw Audit Report"
+                    )
+                );
+
+                technicalDetails.appendChild(
+                    createElement(
+                        "pre",
+                        "",
+                        JSON.stringify(report, null, 2)
+                    )
+                );
+
+                technicalDetails.appendChild(
+                    createElement(
+                        "h5",
+                        "",
+                        "Executed LangGraph Nodes"
+                    )
+                );
+
+                technicalDetails.appendChild(
+                    createElement(
+                        "pre",
+                        "",
+                        JSON.stringify(item.trace || [], null, 2)
+                    )
+                );
+
+                card.appendChild(technicalDetails);
+
+                resultsContainer.appendChild(card);
+
+            });
+
+            result.hidden = false;
+
+            expandButton.textContent = "Expand All";
+
+        }
+
+
+        // ==========================================
+        // SECTION 12: EXPAND OR COLLAPSE ALL DETAILS
+        // Purpose: Control technical information visibility
+        // ==========================================
+
+        expandButton.addEventListener("click", () => {
+
+            const details = Array.from(
+                document.querySelectorAll(
+                    ".technical-details"
+                )
+            );
+
+            const shouldExpand = details.some(
+                detail => !detail.open
+            );
+
+            details.forEach(detail => {
+                detail.open = shouldExpand;
+            });
+
+            expandButton.textContent =
+                shouldExpand ? "Collapse All" : "Expand All";
+
+        });
+
+
+        // ==========================================
+        // SECTION 13: CLEAR ALL BUTTON
+        // Purpose: Reset uploads, question, and audit results
+        // ==========================================
+
+        clearButton.addEventListener("click", () => {
+
+            if (isProcessing) {
+                return;
+            }
+
+            auditForm.reset();
+
+            invoicesInput.value = "";
+            purchaseOrdersInput.value = "";
+
+            userQuery.value = defaultQuestion;
+
+            displayFiles(
+                invoicesInput,
+                invoiceFileList,
+                invoiceCount
+            );
+
+            displayFiles(
+                purchaseOrdersInput,
+                poFileList,
+                poCount
+            );
+
+            status.textContent = "";
+            status.className = "";
+
+            summary.textContent = "";
+
+            resultsContainer.replaceChildren();
+
+            result.hidden = true;
+
+            expandButton.textContent = "Expand All";
+
+        });
+
+
+        // ==========================================
+        // SECTION 14: SUBMIT FORM TO FASTAPI
+        // Purpose: Process multiple PDFs using LangGraph
+        // ==========================================
+
+        auditForm.addEventListener("submit", async event => {
+
+            event.preventDefault();
+
+            if (isProcessing) {
+                return;
+            }
+
+            isProcessing = true;
+
+            submitButton.disabled = true;
+            clearButton.disabled = true;
+
+            invoicesInput.disabled = true;
+            purchaseOrdersInput.disabled = true;
+
+            displayFiles(
+                invoicesInput,
+                invoiceFileList,
+                invoiceCount
+            );
+
+            displayFiles(
+                purchaseOrdersInput,
+                poFileList,
+                poCount
+            );
+
+            status.className = "status-processing";
+
+            status.textContent =
+                "Processing invoices. Please wait...";
+
+            result.hidden = true;
+
+            try {
+
+                // Validate before sending documents
+
+                validateFiles();
+
+                // Build request using existing API field names
+
+                const formData = new FormData();
+
+                formData.append(
+                    "user_query",
+                    userQuery.value
+                );
+
+                Array.from(invoicesInput.files).forEach(file => {
+                    formData.append("invoices", file);
+                });
+
+                Array.from(purchaseOrdersInput.files).forEach(file => {
+                    formData.append("purchase_orders", file);
+                });
+
+                // Send documents to existing FastAPI endpoint
+
+                const response = await fetch("/api/process", {
+                    method: "POST",
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        typeof data.detail === "string"
+                            ? data.detail
+                            : "Processing request failed."
+                    );
+
+                }
+
+                // Display audit dashboard
+
+                displayResults(data);
+
+                status.className = "status-success";
+
+                status.textContent =
+                    "Processing finished. " +
+                    data.completed + " completed, " +
+                    data.failed + " failed.";
+
+                // Refresh saved history after audit
+
+                await loadHistory();
+
+            } catch (error) {
+
+                status.className = "status-error";
+                status.textContent = error.message;
+
+            } finally {
+
+                isProcessing = false;
+
+                submitButton.disabled = false;
+                clearButton.disabled = false;
+
+                invoicesInput.disabled = false;
+                purchaseOrdersInput.disabled = false;
+
+                displayFiles(
+                    invoicesInput,
+                    invoiceFileList,
+                    invoiceCount
+                );
+
+                displayFiles(
+                    purchaseOrdersInput,
+                    poFileList,
+                    poCount
+                );
+
+            }
+
+        });
+
+
+        // ==========================================
+        // SECTION 15: AUDIT HISTORY
+        // Purpose: Load, reopen, and delete saved audit sessions
+        // ==========================================
+
+        async function loadHistory() {
+
+            try {
+
+                const response = await fetch("/api/history");
+
+                if (!response.ok) {
+                    throw new Error("Unable to load history.");
+                }
+
+                const sessions = await response.json();
+
+                historyList.replaceChildren();
+
+                if (!Array.isArray(sessions) || sessions.length === 0) {
+
+                    historyList.appendChild(
+                        createElement(
+                            "p",
+                            "history-empty",
+                            "No saved audits yet."
+                        )
+                    );
+
+                    return;
+                }
+
+                sessions.forEach(session => {
+
+                    const historyRow = createElement(
+                        "div",
+                        "history-entry"
+                    );
+
+                    const openButton = createElement(
+                        "button",
+                        "history-open",
+                        session.user_query
+                    );
+
+                    openButton.type = "button";
+                    openButton.title = session.user_query;
+
+                    const dateText = createElement(
+                        "small",
+                        "history-date",
+                        new Date(session.created_at).toLocaleString()
+                    );
+
+                    openButton.appendChild(dateText);
+
+                    openButton.addEventListener("click", () => {
+                        openHistory(session.id);
+                    });
+
+                    const deleteButton = createElement(
+                        "button",
+                        "history-delete",
+                        "×"
+                    );
+
+                    deleteButton.type = "button";
+                    deleteButton.title = "Delete saved audit";
+
+                    deleteButton.setAttribute(
+                        "aria-label",
+                        "Delete saved audit"
+                    );
+
+                    deleteButton.addEventListener("click", () => {
+                        deleteHistory(session.id);
+                    });
+
+                    historyRow.appendChild(openButton);
+                    historyRow.appendChild(deleteButton);
+
+                    historyList.appendChild(historyRow);
+
+                });
+
+            } catch (error) {
+
+                historyList.replaceChildren(
+                    createElement(
+                        "p",
+                        "history-empty",
+                        error.message
+                    )
+                );
+
+            }
+
+        }
+
+
+        // ------------------------------------------
+        // STEP 1: Open previous audit
+        // ------------------------------------------
+
+        async function openHistory(historyId) {
+
+            if (isProcessing) {
+                return;
+            }
+
+            try {
+
+                const response = await fetch(
+                    "/api/history/" + historyId
+                );
+
+                if (!response.ok) {
+                    throw new Error("Could not open saved audit.");
+                }
+
+                const session = await response.json();
+
+                userQuery.value = session.user_query;
+
+                displayResults(session.batch_result);
+
+                status.className = "status-success";
+
+                status.textContent =
+                    "Viewing saved audit from " +
+                    new Date(session.created_at).toLocaleString() +
+                    ". Uploaded PDFs are not restored.";
+
+                result.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start"
+                });
+
+            } catch (error) {
+
+                status.className = "status-error";
+                status.textContent = error.message;
+
+            }
+
+        }
+
+
+        // ------------------------------------------
+        // STEP 2: Delete previous audit
+        // ------------------------------------------
+
+        async function deleteHistory(historyId) {
+
+            if (isProcessing) {
+                return;
+            }
+
+            if (!window.confirm("Delete this saved audit?")) {
+                return;
+            }
+
+            try {
+
+                const response = await fetch(
+                    "/api/history/" + historyId,
+                    {
+                        method: "DELETE"
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error("Could not delete saved audit.");
+                }
+
+                await loadHistory();
+
+            } catch (error) {
+
+                status.className = "status-error";
+                status.textContent = error.message;
+
+            }
+
+        }
+
+
+        // ------------------------------------------
+        // STEP 3: Refresh history button
+        // ------------------------------------------
+
+        refreshHistory.addEventListener("click", () => {
+            loadHistory();
+        });
+
+
+        // ==========================================
+        // SECTION 16: INITIALIZE APPLICATION
+        // Purpose: Display empty upload lists and load history
+        // ==========================================
+
+        displayFiles(
+            invoicesInput,
+            invoiceFileList,
+            invoiceCount
+        );
+
+        displayFiles(
+            purchaseOrdersInput,
+            poFileList,
+            poCount
+        );
+
+        loadHistory();
+
+    </script>
+
+</body>
+</html>
